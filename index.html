@@ -83,13 +83,13 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const T = {
  en:{dir:"ltr",title:"Readme Monitor",signin:"Sign in",email:"Email",password:"Password",bad:"Wrong email or password.",
   devices:"Devices",active:"Active (7 days)",opens:"Opens",appTime:"Time in app",readTime:"Reading time",pdfTime:"External PDF",books:"Books",lib:"Library size",
-  seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
+  inactive:"Inactive 14+ days: probably uninstalled",ev_installed:"Installed",ev_reinstalled:"Reinstalled",ev_returned:"Came back",ipc:"by IP",seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
   stop:"Stop this device",resume:"Resume",label:"Name",reason:"Reason (shown to the tester)",note:"Private note (optional)",confirm:"Stop",cancel:"Cancel",
   none:"No devices yet. They appear after the trial build is opened once.",chgPw:"Change password",newPw:"New password (8+ characters)",out:"Sign out",close:"Close",
   del:"Delete device",delAsk:"Delete this device and all its numbers? This cannot be undone.",delYes:"Delete",refresh:"Updated",tester:"Tester",nameIt:"Name this device",never:"never",foot:"Server keep-alive runs every 5 days."},
  ar:{dir:"rtl",title:"مراقبة Readme",signin:"دخول",email:"البريد",password:"كلمة المرور",bad:"البريد أو كلمة المرور غير صحيحة.",
   devices:"الأجهزة",active:"نشطة (7 أيام)",opens:"مرات الفتح",appTime:"مدة الاستخدام",readTime:"مدة القراءة",pdfTime:"PDF خارجي",books:"الكتب",lib:"حجم المكتبة",
-  seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
+  inactive:"غير نشط +14 يوماً: غالباً حُذف التطبيق",ev_installed:"ثُبّت",ev_reinstalled:"أُعيد تثبيته",ev_returned:"رجع",ipc:"حسب الـ IP",seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
   stop:"إيقاف هذا الجهاز",resume:"استئناف",label:"الاسم",reason:"السبب (يظهر للمختبِر)",note:"ملاحظة خاصة (اختياري)",confirm:"إيقاف",cancel:"إلغاء",
   none:"لا توجد أجهزة بعد. تظهر بعد فتح النسخة التجريبية مرة واحدة.",chgPw:"تغيير كلمة المرور",newPw:"كلمة مرور جديدة (8 أحرف فأكثر)",out:"تسجيل الخروج",close:"إغلاق",
   del:"حذف الجهاز",delAsk:"حذف هذا الجهاز وكل أرقامه؟ لا يمكن التراجع.",delYes:"حذف",refresh:"تم التحديث",tester:"المختبِر",nameIt:"سمِّ هذا الجهاز",never:"أبداً",foot:"المهمة الدورية لإبقاء السيرفر نشطاً تعمل كل 5 أيام."}
@@ -98,7 +98,7 @@ let lang = (()=>{try{return localStorage.getItem("lang")}catch(e){return null}})
 if(!["ar","en"].includes(lang)) lang="en";
 const $ = id => document.getElementById(id);
 const t = k => T[lang][k];
-let devices=[], reasons=[];
+let events=[];let devices=[], reasons=[];
 
 function dur(s){s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:m?`${m}m`:`${s}s`}
 function size(b){b=Number(b||0);const g=b/1073741824;return g>=1?g.toFixed(1)+" GB":(b/1048576).toFixed(0)+" MB"}
@@ -129,7 +129,9 @@ function render(){
    <div class="dev ${d.banned?"banned":""}">
     <div class="top"><span class="id" title="${esc(d.install_id)}">${esc(d.install_id.slice(0,8))}</span>
       <span class="tag ${d.banned?"bad":"ok"}">${esc(d.banned?t("stopped"):t("running"))}</span></div>
-    <div><b>${esc(d.label||d.device_model||"?")}</b> <span class="muted">${flag(d.country)} ${esc(d.country||"")}</span></div>
+    <div><b>${esc(d.label||d.device_model||"?")}</b> <span class="muted">${flag(d.ip_country||d.country)} ${esc(d.ip_country||d.country||"")}${d.ip_country?" ("+t("ipc")+")":""}</span></div>
+    ${(Date.now()-new Date(d.last_seen))>14*864e5?`<div class="muted">⚠ ${t("inactive")}</div>`:""}
+    ${events.filter(e=>e.install_id==d.install_id).slice(0,3).map(e=>`<div class="muted">• ${t("ev_"+e.kind)} · ${new Date(e.at).toLocaleDateString(lang)}</div>`).join("")}
     <div class="rows">
       <span>${t("model")}<br><b>${esc(d.device_model)} · Android ${esc(d.android_version)}</b></span>
       <span>${t("ver")}<br><b>${esc(d.app_version)}</b></span>
@@ -152,7 +154,8 @@ function render(){
 }
 
 async function load(){
-  const [d,r]=await Promise.all([db.from("devices").select("*").order("last_seen",{ascending:false}),db.from("ban_reasons").select("*")]);
+  const [d,r,ev]=await Promise.all([db.from("devices").select("*").order("last_seen",{ascending:false}),db.from("ban_reasons").select("*"),db.from("device_events").select("*").order("at",{ascending:false}).limit(500)]);
+  events=ev.data||[];
   if(d.error){console.error(d.error);return}
   devices=d.data;reasons=r.data||[];render();
 }
