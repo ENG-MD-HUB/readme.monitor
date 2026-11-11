@@ -62,6 +62,11 @@ dialog{background:var(--card);color:var(--text);border:1px solid var(--line);bor
   <div class="actions"><button class="btn bad" value="ok" id="banOk"></button><button class="btn" value="cancel" id="banCancel"></button></div>
 </form></dialog>
 
+<dialog id="delDlg"><form method="dialog">
+  <h3 id="tDelTitle" style="margin:0"></h3><p id="tDelAsk" class="muted" style="margin:0"></p>
+  <div class="actions"><button class="btn bad" value="ok" id="delOk"></button><button class="btn" value="cancel" id="delCancel"></button></div>
+</form></dialog>
+
 <dialog id="menuDlg"><form method="dialog">
   <button class="btn" type="button" id="chgPw"></button>
   <button class="btn" type="button" id="signOut"></button>
@@ -81,13 +86,13 @@ const T = {
   seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
   stop:"Stop this device",resume:"Resume",label:"Name",reason:"Reason (shown to the tester)",note:"Private note (optional)",confirm:"Stop",cancel:"Cancel",
   none:"No devices yet. They appear after the trial build is opened once.",chgPw:"Change password",newPw:"New password (8+ characters)",out:"Sign out",close:"Close",
-  refresh:"Updated",tester:"Tester",nameIt:"Name this device",never:"never",foot:"Server keep-alive runs every 5 days."},
+  del:"Delete device",delAsk:"Delete this device and all its numbers? This cannot be undone.",delYes:"Delete",refresh:"Updated",tester:"Tester",nameIt:"Name this device",never:"never",foot:"Server keep-alive runs every 5 days."},
  ar:{dir:"rtl",title:"مراقبة Readme",signin:"دخول",email:"البريد",password:"كلمة المرور",bad:"البريد أو كلمة المرور غير صحيحة.",
   devices:"الأجهزة",active:"نشطة (7 أيام)",opens:"مرات الفتح",appTime:"مدة الاستخدام",readTime:"مدة القراءة",pdfTime:"PDF خارجي",books:"الكتب",lib:"حجم المكتبة",
   seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
   stop:"إيقاف هذا الجهاز",resume:"استئناف",label:"الاسم",reason:"السبب (يظهر للمختبِر)",note:"ملاحظة خاصة (اختياري)",confirm:"إيقاف",cancel:"إلغاء",
   none:"لا توجد أجهزة بعد. تظهر بعد فتح النسخة التجريبية مرة واحدة.",chgPw:"تغيير كلمة المرور",newPw:"كلمة مرور جديدة (8 أحرف فأكثر)",out:"تسجيل الخروج",close:"إغلاق",
-  refresh:"تم التحديث",tester:"المختبِر",nameIt:"سمِّ هذا الجهاز",never:"أبداً",foot:"المهمة الدورية لإبقاء السيرفر نشطاً تعمل كل 5 أيام."}
+  del:"حذف الجهاز",delAsk:"حذف هذا الجهاز وكل أرقامه؟ لا يمكن التراجع.",delYes:"حذف",refresh:"تم التحديث",tester:"المختبِر",nameIt:"سمِّ هذا الجهاز",never:"أبداً",foot:"المهمة الدورية لإبقاء السيرفر نشطاً تعمل كل 5 أيام."}
 };
 let lang = (()=>{try{return localStorage.getItem("lang")}catch(e){return null}})() || ((navigator.language||"en").startsWith("ar")?"ar":"en");
 if(!["ar","en"].includes(lang)) lang="en";
@@ -142,6 +147,7 @@ function render(){
       <button class="btn" data-act="name" data-id="${d.install_id}">${t("nameIt")}</button>
       ${d.banned?`<button class="btn primary" data-act="resume" data-id="${d.install_id}">${t("resume")}</button>`
                :`<button class="btn bad" data-act="stop" data-id="${d.install_id}">${t("stop")}</button>`}
+      <button class="btn" data-act="del" data-id="${d.install_id}">${t("del")}</button>
     </div></div>`).join("");
 }
 
@@ -156,6 +162,7 @@ $("list").onclick=async e=>{
   const b=e.target.closest("button[data-act]");if(!b)return;const id=b.dataset.id,act=b.dataset.act;
   if(act=="name"){const cur=devices.find(x=>x.install_id==id)?.label||"";const v=prompt(t("label"),cur);if(v!==null){await db.rpc("owner_set_label",{p_install_id:id,p_label:v});load()}}
   if(act=="resume"){await db.rpc("owner_set_ban",{p_install_id:id,p_banned:false,p_code:null,p_note:null});load()}
+  if(act=="del"){$("tDelTitle").textContent=t("del")+" · "+id.slice(0,8);$("tDelAsk").textContent=t("delAsk");$("delOk").textContent=t("delYes");$("delCancel").textContent=t("cancel");$("delDlg").dataset.id=id;$("delDlg").showModal()}
   if(act=="stop"){
     $("tBanTitle").textContent=t("stop")+" · "+id.slice(0,8);
     $("banReason").innerHTML=reasons.map(r=>`<option value="${esc(r.code)}">${esc(lang=="ar"?r.ar:r.en)}</option>`).join("");
@@ -165,6 +172,11 @@ $("list").onclick=async e=>{
 $("banDlg").addEventListener("close",async()=>{
   if($("banDlg").returnValue!="ok")return;
   await db.rpc("owner_set_ban",{p_install_id:$("banDlg").dataset.id,p_banned:true,p_code:$("banReason").value,p_note:$("banNote").value});load();
+});
+
+$("delDlg").addEventListener("close",async()=>{
+  if($("delDlg").returnValue!="ok")return;
+  await db.rpc("owner_delete_device",{p_install_id:$("delDlg").dataset.id});load();
 });
 
 $("menu").onclick=()=>$("menuDlg").showModal();
