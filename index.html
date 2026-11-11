@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0f">
+<meta name="robots" content="noindex,nofollow">
+<title>Readme Monitor</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#0b0b0f;--card:#15151c;--line:#262633;--text:#f2f2f6;--mute:#9a9ab0;--accent:#8b7cff;--ok:#3ddc97;--bad:#ff5d6c}
+@media (prefers-color-scheme:light){:root{--bg:#f6f6fa;--card:#fff;--line:#e3e3ee;--text:#16161d;--mute:#6b6b80;--accent:#5b4bd6;--ok:#14935f;--bad:#d62c3d}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;padding:env(safe-area-inset-top) 16px 40px}
+header{display:flex;align-items:center;gap:10px;padding:16px 0}h1{font-size:20px;margin:0;flex:1;letter-spacing:.2px}
+button,select,input{font:inherit;color:inherit}
+.btn{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.bad{border-color:var(--bad);color:var(--bad)}
+.btn:active{transform:scale(.97)}
+#login{max-width:360px;margin:12vh auto;display:grid;gap:12px}
+input,select{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}.stat b{display:block;font-size:22px}.stat span{color:var(--mute);font-size:12px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.dev{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;display:grid;gap:8px}
+.dev.banned{border-color:var(--bad)}
+.top{display:flex;justify-content:space-between;gap:8px;align-items:center}.id{font:600 13px ui-monospace,monospace;background:var(--bg);padding:3px 8px;border-radius:8px;border:1px solid var(--line)}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}.tag.ok{color:var(--ok);border-color:var(--ok)}.tag.bad{color:var(--bad);border-color:var(--bad)}
+.rows{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;color:var(--mute);font-size:13px}.rows b{color:var(--text);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+dialog{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(92vw,380px)}dialog::backdrop{background:#0008}dialog form{display:grid;gap:10px}
+.err{color:var(--bad);min-height:1.3em;font-size:13px}.muted{color:var(--mute);font-size:13px}.empty{text-align:center;color:var(--mute);padding:40px 0}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<section id="login" hidden>
+  <h1 id="tLoginTitle">Readme Monitor</h1>
+  <input id="email" type="email" autocomplete="username" placeholder="Email">
+  <input id="password" type="password" autocomplete="current-password" placeholder="Password">
+  <div class="err" id="loginErr"></div>
+  <button class="btn primary" id="loginBtn">Sign in</button>
+  <button class="btn" id="langLogin">العربية</button>
+</section>
+
+<main id="app" hidden>
+  <header>
+    <h1 id="tTitle">Readme Monitor</h1>
+    <button class="btn" id="refresh" title="Refresh">⟳</button>
+    <button class="btn" id="lang">العربية</button>
+    <button class="btn" id="menu">⋯</button>
+  </header>
+  <div class="stats" id="stats"></div>
+  <div class="grid" id="list"></div>
+  <p class="muted" id="foot"></p>
+</main>
+
+<dialog id="banDlg"><form method="dialog" id="banForm">
+  <h3 id="tBanTitle" style="margin:0"></h3>
+  <select id="banReason"></select>
+  <input id="banNote" maxlength="200">
+  <div class="actions"><button class="btn bad" value="ok" id="banOk"></button><button class="btn" value="cancel" id="banCancel"></button></div>
+</form></dialog>
+
+<dialog id="menuDlg"><form method="dialog">
+  <button class="btn" type="button" id="chgPw"></button>
+  <button class="btn" type="button" id="signOut"></button>
+  <button class="btn" value="x" id="closeMenu"></button>
+</form></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://lfdngkibdnkwhqeasmuw.supabase.co";
+// Publishable key: public by design. Every table is locked by row-level security to the owner's login.
+const SUPABASE_KEY = "sb_publishable_B738d43Eg2U1A9jkqymAwQ_QF11RD9s";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const T = {
+ en:{dir:"ltr",title:"Readme Monitor",signin:"Sign in",email:"Email",password:"Password",bad:"Wrong email or password.",
+  devices:"Devices",active:"Active (7 days)",opens:"Opens",appTime:"Time in app",readTime:"Reading time",pdfTime:"External PDF",books:"Books",lib:"Library size",
+  seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
+  stop:"Stop this device",resume:"Resume",label:"Name",reason:"Reason (shown to the tester)",note:"Private note (optional)",confirm:"Stop",cancel:"Cancel",
+  none:"No devices yet. They appear after the trial build is opened once.",chgPw:"Change password",newPw:"New password (8+ characters)",out:"Sign out",close:"Close",
+  refresh:"Updated",tester:"Tester",nameIt:"Name this device",never:"never",foot:"Server keep-alive runs every 5 days."},
+ ar:{dir:"rtl",title:"مراقبة Readme",signin:"دخول",email:"البريد",password:"كلمة المرور",bad:"البريد أو كلمة المرور غير صحيحة.",
+  devices:"الأجهزة",active:"نشطة (7 أيام)",opens:"مرات الفتح",appTime:"مدة الاستخدام",readTime:"مدة القراءة",pdfTime:"PDF خارجي",books:"الكتب",lib:"حجم المكتبة",
+  seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
+  stop:"إيقاف هذا الجهاز",resume:"استئناف",label:"الاسم",reason:"السبب (يظهر للمختبِر)",note:"ملاحظة خاصة (اختياري)",confirm:"إيقاف",cancel:"إلغاء",
+  none:"لا توجد أجهزة بعد. تظهر بعد فتح النسخة التجريبية مرة واحدة.",chgPw:"تغيير كلمة المرور",newPw:"كلمة مرور جديدة (8 أحرف فأكثر)",out:"تسجيل الخروج",close:"إغلاق",
+  refresh:"تم التحديث",tester:"المختبِر",nameIt:"سمِّ هذا الجهاز",never:"أبداً",foot:"المهمة الدورية لإبقاء السيرفر نشطاً تعمل كل 5 أيام."}
+};
+let lang = (()=>{try{return localStorage.getItem("lang")}catch(e){return null}})() || ((navigator.language||"en").startsWith("ar")?"ar":"en");
+if(!["ar","en"].includes(lang)) lang="en";
+const $ = id => document.getElementById(id);
+const t = k => T[lang][k];
+let devices=[], reasons=[];
+
+function dur(s){s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:m?`${m}m`:`${s}s`}
+function size(b){b=Number(b||0);const g=b/1073741824;return g>=1?g.toFixed(1)+" GB":(b/1048576).toFixed(0)+" MB"}
+function ago(d){if(!d)return t("never");const s=(Date.now()-new Date(d))/1000;if(s<90)return lang=="ar"?"الآن":"now";if(s<3600)return Math.round(s/60)+(lang=="ar"?" د":" min");if(s<86400)return Math.round(s/3600)+(lang=="ar"?" س":" h");return Math.round(s/86400)+(lang=="ar"?" يوم":" d")}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function flag(cc){return cc&&cc.length==2?String.fromCodePoint(...[...cc.toUpperCase()].map(c=>127397+c.charCodeAt(0))):""}
+
+function applyLang(){
+  document.documentElement.lang=lang;document.documentElement.dir=t("dir");
+  const other=lang=="ar"?"English":"العربية";
+  ["lang","langLogin"].forEach(i=>$(i).textContent=other);
+  $("email").placeholder=t("email");$("password").placeholder=t("password");$("loginBtn").textContent=t("signin");
+  $("tTitle").textContent=$("tLoginTitle").textContent=t("title");
+  $("chgPw").textContent=t("chgPw");$("signOut").textContent=t("out");$("closeMenu").textContent=t("close");
+  $("banOk").textContent=t("confirm");$("banCancel").textContent=t("cancel");$("banNote").placeholder=t("note");$("foot").textContent=t("foot");
+  render();
+}
+function setLang(){lang=lang=="ar"?"en":"ar";try{localStorage.setItem("lang",lang)}catch(e){}applyLang()}
+$("lang").onclick=$("langLogin").onclick=setLang;
+
+function render(){
+  const week=Date.now()-7*864e5;
+  const sum=f=>devices.reduce((a,d)=>a+Number(d[f]||0),0);
+  const stats=[[t("devices"),devices.length],[t("active"),devices.filter(d=>new Date(d.last_seen)>week).length],[t("opens"),sum("open_count")],[t("appTime"),dur(sum("total_seconds"))],[t("readTime"),dur(sum("read_seconds"))],[t("pdfTime"),dur(sum("external_seconds"))],[t("books"),sum("library_books")]];
+  $("stats").innerHTML=stats.map(([k,v])=>`<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("");
+  if(!devices.length){$("list").innerHTML=`<div class="empty">${esc(t("none"))}</div>`;return}
+  $("list").innerHTML=devices.map(d=>`
+   <div class="dev ${d.banned?"banned":""}">
+    <div class="top"><span class="id" title="${esc(d.install_id)}">${esc(d.install_id.slice(0,8))}</span>
+      <span class="tag ${d.banned?"bad":"ok"}">${esc(d.banned?t("stopped"):t("running"))}</span></div>
+    <div><b>${esc(d.label||d.device_model||"?")}</b> <span class="muted">${flag(d.country)} ${esc(d.country||"")}</span></div>
+    <div class="rows">
+      <span>${t("model")}<br><b>${esc(d.device_model)} · Android ${esc(d.android_version)}</b></span>
+      <span>${t("ver")}<br><b>${esc(d.app_version)}</b></span>
+      <span>${t("opens")}<br><b>${d.open_count}</b></span>
+      <span>${t("appTime")}<br><b>${dur(d.total_seconds)}</b></span>
+      <span>${t("readTime")}<br><b>${dur(d.read_seconds)}</b></span>
+      <span>${t("pdfTime")}<br><b>${dur(d.external_seconds)}</b></span>
+      <span>${t("books")}<br><b>${d.library_books} · ${size(d.library_bytes)}</b></span>
+      <span>${t("seen")}<br><b>${ago(d.last_seen)}</b></span>
+      <span>${t("tz")}<br><b>${esc(d.timezone||"-")}</b></span>
+      <span>${t("first")}<br><b>${new Date(d.first_seen).toLocaleDateString(lang)}</b></span>
+    </div>
+    ${d.banned?`<div class="muted">${esc(d.ban_reason_code||"")} ${esc(d.ban_note||"")}</div>`:""}
+    <div class="actions">
+      <button class="btn" data-act="name" data-id="${d.install_id}">${t("nameIt")}</button>
+      ${d.banned?`<button class="btn primary" data-act="resume" data-id="${d.install_id}">${t("resume")}</button>`
+               :`<button class="btn bad" data-act="stop" data-id="${d.install_id}">${t("stop")}</button>`}
+    </div></div>`).join("");
+}
+
+async function load(){
+  const [d,r]=await Promise.all([db.from("devices").select("*").order("last_seen",{ascending:false}),db.from("ban_reasons").select("*")]);
+  if(d.error){console.error(d.error);return}
+  devices=d.data;reasons=r.data||[];render();
+}
+$("refresh").onclick=load;
+
+$("list").onclick=async e=>{
+  const b=e.target.closest("button[data-act]");if(!b)return;const id=b.dataset.id,act=b.dataset.act;
+  if(act=="name"){const cur=devices.find(x=>x.install_id==id)?.label||"";const v=prompt(t("label"),cur);if(v!==null){await db.rpc("owner_set_label",{p_install_id:id,p_label:v});load()}}
+  if(act=="resume"){await db.rpc("owner_set_ban",{p_install_id:id,p_banned:false,p_code:null,p_note:null});load()}
+  if(act=="stop"){
+    $("tBanTitle").textContent=t("stop")+" · "+id.slice(0,8);
+    $("banReason").innerHTML=reasons.map(r=>`<option value="${esc(r.code)}">${esc(lang=="ar"?r.ar:r.en)}</option>`).join("");
+    $("banNote").value="";$("banDlg").dataset.id=id;$("banDlg").showModal();
+  }
+};
+$("banDlg").addEventListener("close",async()=>{
+  if($("banDlg").returnValue!="ok")return;
+  await db.rpc("owner_set_ban",{p_install_id:$("banDlg").dataset.id,p_banned:true,p_code:$("banReason").value,p_note:$("banNote").value});load();
+});
+
+$("menu").onclick=()=>$("menuDlg").showModal();
+$("signOut").onclick=async()=>{await db.auth.signOut();$("menuDlg").close();show()};
+$("chgPw").onclick=async()=>{const p=prompt(t("newPw"));if(p&&p.length>=8){const {error}=await db.auth.updateUser({password:p});alert(error?error.message:"OK")}$("menuDlg").close()};
+
+$("loginBtn").onclick=async()=>{
+  $("loginErr").textContent="";
+  const {error}=await db.auth.signInWithPassword({email:$("email").value.trim(),password:$("password").value});
+  if(error){$("loginErr").textContent=t("bad");return}show();
+};
+$("password").addEventListener("keydown",e=>{if(e.key=="Enter")$("loginBtn").click()});
+
+async function show(){
+  const {data}=await db.auth.getSession();
+  $("login").hidden=!!data.session;$("app").hidden=!data.session;
+  if(data.session)load();
+}
+applyLang();show();
+setInterval(()=>{if(!$("app").hidden)load()},60000);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
