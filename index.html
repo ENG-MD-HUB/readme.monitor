@@ -31,6 +31,13 @@ input,select{background:var(--card);border:1px solid var(--line);border-radius:1
 dialog{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(92vw,380px)}dialog::backdrop{background:#0008}dialog form{display:grid;gap:10px}
 .err{color:var(--bad);min-height:1.3em;font-size:13px}.muted{color:var(--mute);font-size:13px}.empty{text-align:center;color:var(--mute);padding:40px 0}
 [hidden]{display:none!important}
+.grp{margin:18px 2px 8px;font-size:13px;color:var(--muted,#7d8590)}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+.dev .nm{font-size:16px}.tag.idle{background:#33290f;color:#e0b050}
+.big{display:flex;gap:8px;margin:12px 0 8px}.big div{flex:1;background:rgba(127,127,127,.1);border-radius:10px;padding:9px 4px;text-align:center}.big b{display:block;font-size:17px}.big span{font-size:11px;opacity:.65}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px;opacity:.9;margin-bottom:8px}.mini b{font-size:13px}
+.wk{display:flex;align-items:flex-end;justify-content:space-between;margin:6px 0}.bars{display:flex;gap:4px;align-items:flex-end;height:36px}.bars i{display:block;width:12px;border-radius:3px;background:#6b8cff;opacity:.8}
+.ev{font-size:12px;color:#c9b27a;margin-top:4px}.ev.err{color:#f07a72}
+.det{margin-top:8px;padding-top:8px;border-top:1px solid rgba(127,127,127,.2);font-size:11px;opacity:.6;line-height:1.8}
 </style>
 </head>
 <body>
@@ -83,13 +90,13 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const T = {
  en:{dir:"ltr",title:"Readme Monitor",signin:"Sign in",email:"Email",password:"Password",bad:"Wrong email or password.",
   devices:"Devices",active:"Active (7 days)",opens:"Opens",appTime:"Time in app",readTime:"Reading time",pdfTime:"External PDF",books:"Books",lib:"Library size",
-  inactive:"Inactive 14+ days: probably uninstalled",ev_installed:"Installed",ev_reinstalled:"Reinstalled",ev_returned:"Came back",ipc:"by IP",seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
+  grpA:"Active",grpI:"Inactive",grpS:"Stopped",avg:"Avg. session",share:"Reading share",week:"Last 7 days",errs:"Errors",lastErr:"Last error",libsz:"Library",first2:"Since",inactive:"Inactive 14+ days: probably uninstalled",ev_installed:"Installed",ev_reinstalled:"Reinstalled",ev_returned:"Came back",ipc:"by IP",seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
   stop:"Stop this device",resume:"Resume",label:"Name",reason:"Reason (shown to the tester)",note:"Private note (optional)",confirm:"Stop",cancel:"Cancel",
   none:"No devices yet. They appear after the trial build is opened once.",chgPw:"Change password",newPw:"New password (8+ characters)",out:"Sign out",close:"Close",
   del:"Delete device",delAsk:"Delete this device and all its numbers? This cannot be undone.",delYes:"Delete",refresh:"Updated",tester:"Tester",nameIt:"Name this device",never:"never",foot:"Server keep-alive runs every 5 days."},
  ar:{dir:"rtl",title:"مراقبة Readme",signin:"دخول",email:"البريد",password:"كلمة المرور",bad:"البريد أو كلمة المرور غير صحيحة.",
   devices:"الأجهزة",active:"نشطة (7 أيام)",opens:"مرات الفتح",appTime:"مدة الاستخدام",readTime:"مدة القراءة",pdfTime:"PDF خارجي",books:"الكتب",lib:"حجم المكتبة",
-  inactive:"غير نشط +14 يوماً: غالباً حُذف التطبيق",ev_installed:"ثُبّت",ev_reinstalled:"أُعيد تثبيته",ev_returned:"رجع",ipc:"حسب الـ IP",seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
+  grpA:"نشط",grpI:"غير نشط",grpS:"موقوف",avg:"متوسط الجلسة",share:"نسبة القراءة",week:"آخر 7 أيام",errs:"الأخطاء",lastErr:"آخر خطأ",libsz:"المكتبة",first2:"منذ",inactive:"غير نشط +14 يوماً: غالباً حُذف التطبيق",ev_installed:"ثُبّت",ev_reinstalled:"أُعيد تثبيته",ev_returned:"رجع",ipc:"حسب الـ IP",seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
   stop:"إيقاف هذا الجهاز",resume:"استئناف",label:"الاسم",reason:"السبب (يظهر للمختبِر)",note:"ملاحظة خاصة (اختياري)",confirm:"إيقاف",cancel:"إلغاء",
   none:"لا توجد أجهزة بعد. تظهر بعد فتح النسخة التجريبية مرة واحدة.",chgPw:"تغيير كلمة المرور",newPw:"كلمة مرور جديدة (8 أحرف فأكثر)",out:"تسجيل الخروج",close:"إغلاق",
   del:"حذف الجهاز",delAsk:"حذف هذا الجهاز وكل أرقامه؟ لا يمكن التراجع.",delYes:"حذف",refresh:"تم التحديث",tester:"المختبِر",nameIt:"سمِّ هذا الجهاز",never:"أبداً",foot:"المهمة الدورية لإبقاء السيرفر نشطاً تعمل كل 5 أيام."}
@@ -98,7 +105,7 @@ let lang = (()=>{try{return localStorage.getItem("lang")}catch(e){return null}})
 if(!["ar","en"].includes(lang)) lang="en";
 const $ = id => document.getElementById(id);
 const t = k => T[lang][k];
-let events=[];let devices=[], reasons=[];
+let events=[],usage=[],errorsOf={};let devices=[], reasons=[];
 
 function dur(s){s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:m?`${m}m`:`${s}s`}
 function size(b){b=Number(b||0);const g=b/1073741824;return g>=1?g.toFixed(1)+" GB":(b/1048576).toFixed(0)+" MB"}
@@ -122,40 +129,45 @@ $("lang").onclick=$("langLogin").onclick=setLang;
 function render(){
   const week=Date.now()-7*864e5;
   const sum=f=>devices.reduce((a,d)=>a+Number(d[f]||0),0);
-  const stats=[[t("devices"),devices.length],[t("active"),devices.filter(d=>new Date(d.last_seen)>week).length],[t("opens"),sum("open_count")],[t("appTime"),dur(sum("total_seconds"))],[t("readTime"),dur(sum("read_seconds"))],[t("pdfTime"),dur(sum("external_seconds"))],[t("books"),sum("library_books")]];
+  const stats=[[t("devices"),devices.length],[t("active"),devices.filter(d=>new Date(d.last_seen)>week).length],[t("opens"),sum("open_count")],[t("appTime"),dur(sum("total_seconds"))],[t("readTime"),dur(sum("read_seconds"))],[t("pdfTime"),dur(sum("external_seconds"))],[t("books"),sum("library_books")],[t("errs"),sum("error_count")]];
   $("stats").innerHTML=stats.map(([k,v])=>`<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("");
   if(!devices.length){$("list").innerHTML=`<div class="empty">${esc(t("none"))}</div>`;return}
-  $("list").innerHTML=devices.map(d=>`
-   <div class="dev ${d.banned?"banned":""}">
-    <div class="top"><span class="id" title="${esc(d.install_id)}">${esc(d.install_id.slice(0,8))}</span>
-      <span class="tag ${d.banned?"bad":"ok"}">${esc(d.banned?t("stopped"):t("running"))}</span></div>
-    <div><b>${esc(d.label||d.device_model||"?")}</b> <span class="muted">${flag(d.ip_country||d.country)} ${esc(d.ip_country||d.country||"")}${d.ip_country?" ("+t("ipc")+")":""}</span></div>
-    ${(Date.now()-new Date(d.last_seen))>14*864e5?`<div class="muted">⚠ ${t("inactive")}</div>`:""}
-    ${events.filter(e=>e.install_id==d.install_id).slice(0,3).map(e=>`<div class="muted">• ${t("ev_"+e.kind)} · ${new Date(e.at).toLocaleDateString(lang)}</div>`).join("")}
-    <div class="rows">
-      <span>${t("model")}<br><b>${esc(d.device_model)} · Android ${esc(d.android_version)}</b></span>
-      <span>${t("ver")}<br><b>${esc(d.app_version)}</b></span>
-      <span>${t("opens")}<br><b>${d.open_count}</b></span>
-      <span>${t("appTime")}<br><b>${dur(d.total_seconds)}</b></span>
-      <span>${t("readTime")}<br><b>${dur(d.read_seconds)}</b></span>
-      <span>${t("pdfTime")}<br><b>${dur(d.external_seconds)}</b></span>
-      <span>${t("books")}<br><b>${d.library_books} · ${size(d.library_bytes)}</b></span>
-      <span>${t("seen")}<br><b>${ago(d.last_seen)}</b></span>
-      <span>${t("tz")}<br><b>${esc(d.timezone||"-")}</b></span>
-      <span>${t("first")}<br><b>${new Date(d.first_seen).toLocaleDateString(lang)}</b></span>
-    </div>
+  const DAY=864e5,now=Date.now();
+  const card=d=>{
+    const idle=now-new Date(d.last_seen)>14*DAY;
+    const sess=d.open_count?dur(Math.round(d.total_seconds/d.open_count)):"-";
+    const share=d.total_seconds>0?Math.round(100*d.read_seconds/d.total_seconds)+"%":"-";
+    const days=[...Array(7)].map((_,i)=>{const k=new Date(now-(6-i)*DAY).toISOString().slice(0,10);const u=usage.find(x=>x.install_id==d.install_id&&x.day==k);return Number(u?.app_seconds||0)});
+    const mx=Math.max(...days,1);
+    const bars=days.map(v=>`<i style="height:${Math.max(3,Math.round(34*v/mx))}px" title="${dur(v)}"></i>`).join("");
+    const err=errorsOf[d.install_id];
+    const evs=events.filter(e=>e.install_id==d.install_id).slice(0,3);
+    return `<div class="dev ${d.banned?"banned":""}">
+    <div class="top"><b class="nm">${esc(d.label||d.device_model||"?")}</b>
+      <span class="tag ${d.banned?"bad":idle?"idle":"ok"}">${esc(d.banned?t("stopped"):idle?t("grpI"):t("grpA"))}</span></div>
+    <div class="muted">${flag(d.ip_country||d.country)} ${esc(d.ip_country||d.country||"-")}${d.ip_country?" ("+t("ipc")+")":""} · ${esc(d.timezone||"-")}</div>
+    <div class="big"><div><b>${ago(d.last_seen)}</b><span>${t("seen")}</span></div><div><b>${dur(d.read_seconds)}</b><span>${t("readTime")}</span></div><div><b>${d.open_count}</b><span>${t("opens")}</span></div></div>
+    <div class="mini"><span>${t("appTime")}<br><b>${dur(d.total_seconds)}</b></span><span>${t("avg")}<br><b>${sess}</b></span><span>${t("share")}<br><b>${share}</b></span><span>${t("pdfTime")}<br><b>${dur(d.external_seconds)}</b></span><span>${t("libsz")}<br><b>${d.library_books} · ${size(d.library_bytes)}</b></span><span>${t("errs")}<br><b>${d.error_count||0}</b></span></div>
+    <div class="wk"><div class="bars">${bars}</div><span class="muted">${t("week")}</span></div>
+    ${idle&&!d.banned?`<div class="ev">⚠ ${t("inactive")}</div>`:""}
+    ${evs.map(e=>`<div class="ev">● ${t("ev_"+e.kind)} · ${new Date(e.at).toLocaleDateString(lang)}</div>`).join("")}
+    ${err?`<div class="ev err">✖ ${t("lastErr")}: ${esc(String(err.detail?.message||"").slice(0,120))}</div>`:""}
     ${d.banned?`<div class="muted">${esc(d.ban_reason_code||"")} ${esc(d.ban_note||"")}</div>`:""}
+    <div class="det">${esc(d.device_model)} · Android ${esc(d.android_version)} · v${esc(d.app_version)} (${esc(d.build_type)})<br>${t("first")}: ${new Date(d.first_seen).toLocaleDateString(lang)} · ${d.reinstalls?t("ev_reinstalled")+" ×"+d.reinstalls+" · ":""}<span class="id" title="${esc(d.install_id)}">${esc(d.install_id.slice(0,8))}</span></div>
     <div class="actions">
       <button class="btn" data-act="name" data-id="${d.install_id}">${t("nameIt")}</button>
       ${d.banned?`<button class="btn primary" data-act="resume" data-id="${d.install_id}">${t("resume")}</button>`
                :`<button class="btn bad" data-act="stop" data-id="${d.install_id}">${t("stop")}</button>`}
       <button class="btn" data-act="del" data-id="${d.install_id}">${t("del")}</button>
-    </div></div>`).join("");
+    </div></div>`};
+  const act=devices.filter(d=>!d.banned&&now-new Date(d.last_seen)<=14*DAY),idl=devices.filter(d=>!d.banned&&now-new Date(d.last_seen)>14*DAY),stp=devices.filter(d=>d.banned);
+  const grp=(k,list)=>list.length?`<div class="grp">${t(k)} (${list.length})</div><div class="grid">${list.map(card).join("")}</div>`:"";
+  $("list").innerHTML=grp("grpA",act)+grp("grpI",idl)+grp("grpS",stp);
 }
 
 async function load(){
-  const [d,r,ev]=await Promise.all([db.from("devices").select("*").order("last_seen",{ascending:false}),db.from("ban_reasons").select("*"),db.from("device_events").select("*").order("at",{ascending:false}).limit(500)]);
-  events=ev.data||[];
+  const [d,r,ev,us,er]=await Promise.all([db.from("devices").select("*").order("last_seen",{ascending:false}),db.from("ban_reasons").select("*"),db.from("device_events").select("*").order("at",{ascending:false}).limit(500),db.from("usage_daily").select("*").gte("day",new Date(Date.now()-7*864e5).toISOString().slice(0,10)),db.from("events").select("install_id,detail,created_at").eq("kind","error").order("created_at",{ascending:false}).limit(300)]);
+  events=ev.data||[];usage=us.data||[];errorsOf={};(er.data||[]).forEach(e=>{if(!errorsOf[e.install_id])errorsOf[e.install_id]=e});
   if(d.error){console.error(d.error);return}
   devices=d.data;reasons=r.data||[];render();
 }
