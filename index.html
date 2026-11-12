@@ -116,7 +116,7 @@ let events=[],usage=[],errorsOf={};let devices=[], reasons=[];
 
 function dur(s){s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:m?`${m}m`:`${s}s`}
 function size(b){b=Number(b||0);const g=b/1073741824;return g>=1?g.toFixed(1)+" GB":(b/1048576).toFixed(0)+" MB"}
-function ago(d){if(!d)return t("never");const s=(Date.now()-new Date(d))/1000;if(s<90)return lang=="ar"?"الآن":"now";if(s<3600)return Math.round(s/60)+(lang=="ar"?" د":" min");if(s<86400)return Math.round(s/3600)+(lang=="ar"?" س":" h");return Math.round(s/86400)+(lang=="ar"?" يوم":" d")}
+function ago(d){if(!d)return t("never");const s=(Date.now()-new Date(d))/1000;if(s<90)return lang=="ar"?"متصل الآن":"online now";if(s<3600)return Math.round(s/60)+(lang=="ar"?" د":" min");if(s<86400)return Math.round(s/3600)+(lang=="ar"?" س":" h");return Math.round(s/86400)+(lang=="ar"?" يوم":" d")}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function cname(cc){if(!cc)return "-";try{return new Intl.DisplayNames([lang],{type:"region"}).of(cc.toUpperCase())||cc}catch(e){return cc}}
 function flag(cc){return cc&&cc.length==2?String.fromCodePoint(...[...cc.toUpperCase()].map(c=>127397+c.charCodeAt(0))):""}
