@@ -17,7 +17,7 @@ button,select,input{font:inherit;color:inherit}
 .btn{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 14px;cursor:pointer}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}.btn.bad{border-color:var(--bad);color:var(--bad)}
 .btn:active{transform:scale(.97)}
-#login{max-width:360px;margin:12vh auto;display:grid;gap:12px}
+#login,#mfa{max-width:360px;margin:12vh auto;display:grid;gap:12px}
 input,select{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}.stat b{display:block;font-size:22px}.stat span{color:var(--mute);font-size:12px}
@@ -57,6 +57,17 @@ dialog{background:var(--card);color:var(--text);border:1px solid var(--line);bor
   <button class="btn" id="langLogin">العربية</button>
 </section>
 
+<section id="mfa" hidden>
+  <h1 id="mfaTitle" style="text-align:center"></h1>
+  <p class="muted" id="mfaHelp" style="margin:0;text-align:center"></p>
+  <img id="mfaQr" alt="QR" hidden style="width:200px;height:200px;margin:0 auto;background:#fff;border-radius:12px;padding:8px">
+  <code id="mfaSecret" hidden style="text-align:center;word-break:break-all;font-size:12px"></code>
+  <input id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" style="text-align:center;letter-spacing:6px">
+  <div class="err" id="mfaErr"></div>
+  <button class="btn primary" id="mfaBtn"></button>
+  <button class="btn" id="mfaOut"></button>
+</section>
+
 <main id="app" hidden>
   <header>
     <img class="logo ink-dark" src="logo-dark.png" alt="Readme"><img class="logo ink-light" src="logo-light.png" alt="Readme"><h1 id="tTitle">Readme Monitor</h1>
@@ -83,6 +94,7 @@ dialog{background:var(--card);color:var(--text);border:1px solid var(--line);bor
 
 <dialog id="menuDlg"><form method="dialog">
   <button class="btn" type="button" id="chgPw"></button>
+  <button class="btn" type="button" id="addMfa"></button>
   <button class="btn" type="button" id="signOut"></button>
   <button class="btn" value="x" id="closeMenu"></button>
 </form></dialog>
@@ -99,13 +111,15 @@ const T = {
   devices:"Devices",active:"Active (7 days)",opens:"Opens",appTime:"Time in app",readTime:"Reading time",pdfTime:"External PDF",books:"Books",lib:"Library size",
   grpA:"Active",grpI:"Inactive",grpS:"Stopped",avg:"Avg. session",share:"Reading share",week:"Last 7 days",errs:"Errors",lastErr:"Last error",libsz:"Library",first2:"Since",inactive:"Inactive 14+ days: probably uninstalled",ev_installed:"Installed",ev_reinstalled:"Reinstalled",ev_returned:"Came back",ipc:"by IP",seen:"Last seen",first:"First seen",country:"Country",model:"Device",tz:"Time zone",ver:"Version",stopped:"Stopped",running:"Running",
   stop:"Stop this device",resume:"Resume",label:"Name",reason:"Reason (shown to the tester)",note:"Private note (optional)",confirm:"Stop",cancel:"Cancel",
-  none:"No devices yet. They appear after the trial build is opened once.",chgPw:"Change password",newPw:"New password (8+ characters)",out:"Sign out",close:"Close",
+  none:"No devices yet. They appear after the trial build is opened once.",chgPw:"Change password",newPw:"New password (12+ characters)",curPw:"Current password",
+  mfaEnrollT:"Set up two-step sign-in",mfaEnrollH:"Scan this code with an authenticator app (Google Authenticator, Microsoft Authenticator…), then type the 6-digit code.",mfaCheckT:"Two-step sign-in",mfaCheckH:"Type the 6-digit code from your authenticator app.",mfaVerify:"Confirm",mfaBad:"Wrong or expired code. Try again.",addMfa:"Add a backup authenticator",mfaDone:"Two-step sign-in is now required for this account.",out:"Sign out",close:"Close",
   del:"Delete device",delAsk:"Delete this device and all its numbers? This cannot be undone.",delYes:"Delete",refresh:"Updated",tester:"Tester",nameIt:"Name this device",never:"never",foot:"Server keep-alive runs every 5 days."},
  ar:{dir:"rtl",title:"مراقبة Readme",signin:"دخول",email:"البريد",password:"كلمة المرور",bad:"البريد أو كلمة المرور غير صحيحة.",
   devices:"الأجهزة",active:"نشطة (7 أيام)",opens:"مرات الفتح",appTime:"مدة الاستخدام",readTime:"مدة القراءة",pdfTime:"PDF خارجي",books:"الكتب",lib:"حجم المكتبة",
   grpA:"نشط",grpI:"غير نشط",grpS:"موقوف",avg:"متوسط الجلسة",share:"نسبة القراءة",week:"آخر 7 أيام",errs:"الأخطاء",lastErr:"آخر خطأ",libsz:"المكتبة",first2:"منذ",inactive:"غير نشط +14 يوماً: غالباً حُذف التطبيق",ev_installed:"ثُبّت",ev_reinstalled:"أُعيد تثبيته",ev_returned:"رجع",ipc:"حسب الـ IP",seen:"آخر ظهور",first:"أول ظهور",country:"الدولة",model:"الجهاز",tz:"المنطقة الزمنية",ver:"الإصدار",stopped:"موقوف",running:"يعمل",
   stop:"إيقاف هذا الجهاز",resume:"استئناف",label:"الاسم",reason:"السبب (يظهر للمختبِر)",note:"ملاحظة خاصة (اختياري)",confirm:"إيقاف",cancel:"إلغاء",
-  none:"لا توجد أجهزة بعد. تظهر بعد فتح النسخة التجريبية مرة واحدة.",chgPw:"تغيير كلمة المرور",newPw:"كلمة مرور جديدة (8 أحرف فأكثر)",out:"تسجيل الخروج",close:"إغلاق",
+  none:"لا توجد أجهزة بعد. تظهر بعد فتح النسخة التجريبية مرة واحدة.",chgPw:"تغيير كلمة المرور",newPw:"كلمة مرور جديدة (12 حرفاً فأكثر)",curPw:"كلمة المرور الحالية",
+  mfaEnrollT:"تفعيل التحقق بخطوتين",mfaEnrollH:"امسح هذا الرمز بتطبيق مصادقة (Google Authenticator أو Microsoft Authenticator…) ثم اكتب الرمز المكوّن من 6 أرقام.",mfaCheckT:"التحقق بخطوتين",mfaCheckH:"اكتب الرمز المكوّن من 6 أرقام من تطبيق المصادقة.",mfaVerify:"تأكيد",mfaBad:"الرمز خاطئ أو منتهٍ. حاول مرة أخرى.",addMfa:"إضافة تطبيق مصادقة احتياطي",mfaDone:"صار التحقق بخطوتين إلزامياً لهذا الحساب.",out:"تسجيل الخروج",close:"إغلاق",
   del:"حذف الجهاز",delAsk:"حذف هذا الجهاز وكل أرقامه؟ لا يمكن التراجع.",delYes:"حذف",refresh:"تم التحديث",tester:"المختبِر",nameIt:"سمِّ هذا الجهاز",never:"أبداً",foot:"المهمة الدورية لإبقاء السيرفر نشطاً تعمل كل 5 أيام."}
 };
 let lang = (()=>{try{return localStorage.getItem("lang")}catch(e){return null}})() || ((navigator.language||"en").startsWith("ar")?"ar":"en");
@@ -113,6 +127,7 @@ if(!["ar","en"].includes(lang)) lang="en";
 const $ = id => document.getElementById(id);
 const t = k => T[lang][k];
 let events=[],usage=[],errorsOf={};let devices=[], reasons=[];
+let mfaState={mode:null,factorId:null,back:false};
 
 function dur(s){s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?`${h}h ${m}m`:m?`${m}m`:`${s}s`}
 function size(b){b=Number(b||0);const g=b/1073741824;return g>=1?g.toFixed(1)+" GB":(b/1048576).toFixed(0)+" MB"}
@@ -127,7 +142,9 @@ function applyLang(){
   ["lang","langLogin"].forEach(i=>$(i).textContent=other);
   $("email").placeholder=t("email");$("password").placeholder=t("password");$("loginBtn").textContent=t("signin");
   $("tTitle").textContent=$("tLoginTitle").textContent=t("title");
-  $("chgPw").textContent=t("chgPw");$("signOut").textContent=t("out");$("closeMenu").textContent=t("close");
+  $("chgPw").textContent=t("chgPw");$("addMfa").textContent=t("addMfa");$("signOut").textContent=t("out");
+  $("mfaBtn").textContent=t("mfaVerify");$("mfaOut").textContent=t("out");
+  if(mfaState.mode){$("mfaTitle").textContent=t(mfaState.mode=="enroll"?"mfaEnrollT":"mfaCheckT");$("mfaHelp").textContent=t(mfaState.mode=="enroll"?"mfaEnrollH":"mfaCheckH")}$("closeMenu").textContent=t("close");
   $("banOk").textContent=t("confirm");$("banCancel").textContent=t("cancel");$("banNote").placeholder=t("note");$("foot").textContent=t("foot");
   render();
 }
@@ -204,7 +221,40 @@ $("delDlg").addEventListener("close",async()=>{
 
 $("menu").onclick=()=>$("menuDlg").showModal();
 $("signOut").onclick=async()=>{await db.auth.signOut();$("menuDlg").close();show()};
-$("chgPw").onclick=async()=>{const p=prompt(t("newPw"));if(p&&p.length>=8){const {error}=await db.auth.updateUser({password:p});alert(error?error.message:"OK")}$("menuDlg").close()};
+$("chgPw").onclick=async()=>{
+  $("menuDlg").close();
+  const cur=prompt(t("curPw"));if(!cur)return;
+  const p=prompt(t("newPw"));if(!p||p.length<12)return;
+  const {error}=await db.auth.updateUser({password:p,current_password:cur});alert(error?error.message:"OK");
+};
+
+// ---- Two-step sign-in (TOTP) ----
+function showMfa(mode,qr,secret){
+  mfaState.mode=mode;
+  $("login").hidden=true;$("app").hidden=true;$("mfa").hidden=false;
+  $("mfaQr").hidden=!qr;if(qr)$("mfaQr").src=qr;
+  $("mfaSecret").hidden=!secret;$("mfaSecret").textContent=secret||"";
+  $("mfaCode").value="";$("mfaErr").textContent="";applyLang();$("mfaCode").focus();
+}
+async function startEnroll(back){
+  // Remove abandoned, never-confirmed factors so they do not pile up.
+  const {data:list}=await db.auth.mfa.listFactors();
+  for(const f of (list?.all||[]))if(f.status!="verified")await db.auth.mfa.unenroll({factorId:f.id});
+  const {data,error}=await db.auth.mfa.enroll({factorType:"totp",friendlyName:"Authenticator "+new Date().toISOString().slice(0,16)});
+  if(error){alert(error.message);return}
+  mfaState.factorId=data.id;mfaState.back=back;
+  showMfa("enroll",data.totp.qr_code,data.totp.secret);
+}
+$("mfaBtn").onclick=async()=>{
+  const code=$("mfaCode").value.trim();if(!/^\d{6}$/.test(code)){$("mfaErr").textContent=t("mfaBad");return}
+  const {error}=await db.auth.mfa.challengeAndVerify({factorId:mfaState.factorId,code});
+  if(error){$("mfaErr").textContent=t("mfaBad");return}
+  const enrolled=mfaState.mode=="enroll";mfaState.mode=null;$("mfa").hidden=true;
+  if(enrolled)alert(t("mfaDone"));show();
+};
+$("mfaCode").addEventListener("keydown",e=>{if(e.key=="Enter")$("mfaBtn").click()});
+$("mfaOut").onclick=async()=>{mfaState.mode=null;$("mfa").hidden=true;await db.auth.signOut();show()};
+$("addMfa").onclick=()=>{$("menuDlg").close();startEnroll(true)};
 
 $("loginBtn").onclick=async()=>{
   $("loginErr").textContent="";
@@ -215,8 +265,15 @@ $("password").addEventListener("keydown",e=>{if(e.key=="Enter")$("loginBtn").cli
 
 async function show(){
   const {data}=await db.auth.getSession();
-  $("login").hidden=!!data.session;$("app").hidden=!data.session;
-  if(data.session)load();
+  if(!data.session){$("mfa").hidden=true;$("app").hidden=true;$("login").hidden=false;return}
+  const {data:aal}=await db.auth.mfa.getAuthenticatorAssuranceLevel();
+  if(aal?.nextLevel=="aal2"&&aal?.currentLevel!="aal2"){
+    // A factor exists: ask for today's code before showing anything.
+    const {data:list}=await db.auth.mfa.listFactors();
+    mfaState.factorId=list?.totp?.[0]?.id;showMfa("check");return;
+  }
+  if(aal?.nextLevel!="aal2"){startEnroll(false);return}
+  $("login").hidden=true;$("mfa").hidden=true;$("app").hidden=false;load();
 }
 applyLang();show();
 setInterval(()=>{if(!$("app").hidden)load()},60000);
